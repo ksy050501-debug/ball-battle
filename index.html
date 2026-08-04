@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v178</title>
+  <title>원형 아레나 v179</title>
   <style>
     :root {
       --bg: #020617;
@@ -825,7 +825,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v178</h1>
+    <h1 id="mainTitle">원형 아레나 v179</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -884,7 +884,8 @@
         <button class="ghost" id="volumeBtn">볼륨 60%</button>
       </div>
       <div class="button-row" id="simBoostRow" style="width:min(700px,100%);display:none;">
-        <button class="primary" id="quickSimAllBtn">선택 전체 100전</button>
+        <button class="primary" id="quickSimAdaptiveBtn">빠른 전체 테스트</button>
+        <button class="ghost" id="quickSimAll30Btn">선택 전체 30전</button>
         <button class="ghost" id="quickSim100Btn">1대1 100전</button>
         <button class="ghost" id="copyMatchupBtn">전적 복사</button>
         <button class="ghost" id="resetMatchupBtn">전적 초기화</button>
@@ -1525,6 +1526,7 @@
     }
 
     const patchNotes = [
+      "v179: 자동 테스트 경량화. 빠른 전체는 10전 후 극단 상성만 20전 추가, 전체 30전과 선택 100전 분리, 계산 중 렌더링 중단.",
       "v178: 이리스 유리 영역 피해를 적별 체류 쿨타임으로 수정. 완성 피해감소 10초, 점등 영역 위 상시 15% 피해감소 추가.",
       "v177: 이리스 점등 영역을 느린 지속 피해로 조정하고, 완성 보상을 보호막 대신 6초간 받는 피해 40% 감소로 변경.",
       "v176: 이리스 점등 조각 피해 판정 수정 및 전체 점등 시 맵 전체 광역피해 추가.",
@@ -8763,8 +8765,8 @@
       if (enhancedSimMode) {
         speedMultiplier = Math.min(speedMultiplier, 4);
         $("speedBtn").textContent = `배속 ${speedMultiplier}x`;
-        $("tipText").innerHTML = "시뮬레이션 강화 모드: 전체 100전과 훈련용 더미 사용 가능.";
-        showOverlay("시뮬레이션 강화 모드", "전체 100전과 훈련용 더미가 열렸습니다.");
+        $("tipText").innerHTML = "시뮬레이션 강화 모드: 빠른 전체·전체 30전·1대1 100전 사용 가능.";
+        showOverlay("시뮬레이션 강화 모드", "경량 자동 테스트와 훈련용 더미가 열렸습니다.");
         renderAll();
         updateMatchupButtons();
       }
@@ -8808,7 +8810,7 @@
 
     async function copyMatchupHistory() {
       if (!matchupHistory.length) {
-        showOverlay("복사할 전적 없음", "자동 100전을 돌리면 전적이 누적됩니다.");
+        showOverlay("복사할 전적 없음", "자동 테스트를 돌리면 전적이 누적됩니다.");
         return;
       }
       const text = matchupHistory.map(x => x.line).join("\n");
@@ -8862,7 +8864,7 @@
         return null;
       }
       if (chosen.some(c => c.simOnly)) {
-        showOverlay("더미 제외", "자동 100전 전적에는 훈련용 더미를 사용할 수 없습니다.");
+        showOverlay("더미 제외", "자동 전적에는 훈련용 더미를 사용할 수 없습니다.");
         return null;
       }
 
@@ -8957,11 +8959,9 @@
       const rateA = Math.round(aWins / count * 100);
       const rateB = Math.round(bWins / count * 100);
 
-      if (count === 100) {
-        const line = matchupLine(a, b, aWins, bWins, drawCount);
-        matchupHistory.push({ aId: a.id, bId: b.id, aWins, bWins, drawCount, line, at: Date.now() });
-        updateMatchupButtons();
-      }
+      const line = matchupLine(a, b, aWins, bWins, drawCount);
+      matchupHistory.push({ aId: a.id, bId: b.id, aWins, bWins, drawCount, count, line, at: Date.now() });
+      updateMatchupButtons();
 
       logs = [
         `<div><strong>[자동 ${count}전]</strong> ${escapeHtml(summary)}</div>`,
@@ -8975,51 +8975,91 @@
       draw();
     }
 
-    async function runQuickSimAll100() {
+    function validateAllSimFocus(label) {
       if (!enhancedSimMode) {
         showOverlay("강화 모드 필요", "타이틀을 3번 클릭하고 비밀번호 0806을 입력하면 사용할 수 있습니다.");
-        return;
+        return null;
       }
       if (battleMode !== "solo") {
-        showOverlay("개인전 전용", "전체 100전은 개인전에서 캐릭터 1명을 선택했을 때 작동합니다.");
-        return;
+        showOverlay("개인전 전용", `${label}은 개인전에서 캐릭터 1명을 선택했을 때 작동합니다.`);
+        return null;
       }
-
       const chosen = availableCharacters().filter(c => selected.has(c.id));
       if (chosen.length !== 1) {
-        showOverlay("1명 선택 필요", "전체 100전은 기준 캐릭터를 정확히 1명만 선택하세요.");
-        return;
+        showOverlay("1명 선택 필요", `${label}은 기준 캐릭터를 정확히 1명만 선택하세요.`);
+        return null;
       }
-      const focus = chosen[0];
-      if (focus.simOnly) {
-        showOverlay("더미 제외", "훈련용 더미는 전체 100전 기준 캐릭터로 사용할 수 없습니다.");
-        return;
+      if (chosen[0].simOnly) {
+        showOverlay("더미 제외", "훈련용 더미는 전체 테스트 기준 캐릭터로 사용할 수 없습니다.");
+        return null;
       }
+      return chosen[0];
+    }
 
+    async function runQuickSimAllCount(count) {
+      const focus = validateAllSimFocus(`전체 ${count}전`);
+      if (!focus) return;
       const opponents = battleRosterCharacters().filter(c => c.id !== focus.id);
-      const prev = beginFastSim("전체100전");
+      const prev = beginFastSim(`전체${count}전`);
       const lines = [];
 
       for (let i = 0; i < opponents.length; i++) {
         const opp = opponents[i];
         const pair = [opp, focus];
-        const progress = `[전체 100전] ${focus.name} · ${i + 1}/${opponents.length} ${opp.name}`;
+        const progress = `[전체 ${count}전] ${focus.name} · ${i + 1}/${opponents.length} ${opp.name}`;
         $("log").innerHTML = `<div><strong>${escapeHtml(progress)}</strong> 계산 중...</div>`;
-        const result = await simulateQuickPair(pair, 100, progress);
+        const result = await simulateQuickPair(pair, count, progress);
         const line = matchupLine(opp, focus, result.aWins, result.bWins, result.drawCount);
-        matchupHistory.push({ aId: opp.id, bId: focus.id, aWins: result.aWins, bWins: result.bWins, drawCount: result.drawCount, line, at: Date.now() });
+        matchupHistory.push({ aId: opp.id, bId: focus.id, aWins: result.aWins, bWins: result.bWins, drawCount: result.drawCount, count, line, at: Date.now() });
         lines.push(line);
         updateMatchupButtons();
         await new Promise(resolve => setTimeout(resolve, 0));
       }
 
       endFastSim(prev);
-      logs = [`<div><strong>[전체 100전]</strong> ${escapeHtml(focus.name)} 기준 ${lines.length}개 전적</div>`, ...lines.map(x => `<div>${escapeHtml(x)}</div>`)];
+      logs = [`<div><strong>[전체 ${count}전]</strong> ${escapeHtml(focus.name)} 기준 ${lines.length}개 전적</div>`, ...lines.map(x => `<div>${escapeHtml(x)}</div>`)] ;
       $("log").innerHTML = logs.join("");
-      showOverlay("전체 100전 완료", `${focus.name} 기준 ${lines.length}개 전적이 누적되었습니다.`);
-      updateHud();
-      updateStatusPanel();
-      draw();
+      showOverlay(`전체 ${count}전 완료`, `${focus.name} 기준 ${lines.length}개 전적이 누적되었습니다.`);
+      updateHud(); updateStatusPanel(); draw();
+    }
+
+    async function runQuickSimAdaptive() {
+      const focus = validateAllSimFocus("빠른 전체 테스트");
+      if (!focus) return;
+      const opponents = battleRosterCharacters().filter(c => c.id !== focus.id);
+      const prev = beginFastSim("빠른전체");
+      const lines = [];
+      let refined = 0;
+
+      for (let i = 0; i < opponents.length; i++) {
+        const opp = opponents[i];
+        const pair = [opp, focus];
+        const progress = `[빠른 전체] ${focus.name} · ${i + 1}/${opponents.length} ${opp.name}`;
+        $("log").innerHTML = `<div><strong>${escapeHtml(progress)}</strong> 10전 계산 중...</div>`;
+        const first = await simulateQuickPair(pair, 10, progress);
+        let aWins = first.aWins, bWins = first.bWins, drawCount = first.drawCount, total = 10;
+        const focusWins = bWins;
+        if (focusWins <= 2 || focusWins >= 8) {
+          $("log").innerHTML = `<div><strong>${escapeHtml(progress)}</strong> 극단 상성 감지 · 20전 추가...</div>`;
+          const extra = await simulateQuickPair(pair, 20, progress);
+          aWins += extra.aWins; bWins += extra.bWins; drawCount += extra.drawCount; total = 30; refined += 1;
+        }
+        const line = matchupLine(opp, focus, aWins, bWins, drawCount);
+        matchupHistory.push({ aId: opp.id, bId: focus.id, aWins, bWins, drawCount, count: total, line, at: Date.now() });
+        lines.push(`${line}${total === 30 ? " · 정밀" : " · 빠름"}`);
+        updateMatchupButtons();
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      endFastSim(prev);
+      logs = [`<div><strong>[빠른 전체]</strong> ${escapeHtml(focus.name)} · 극단 상성 ${refined}개만 30전 검증</div>`, ...lines.map(x => `<div>${escapeHtml(x)}</div>`)] ;
+      $("log").innerHTML = logs.join("");
+      showOverlay("빠른 전체 완료", `${opponents.length}개 상성 중 ${refined}개만 30전까지 추가 검증했습니다.`);
+      updateHud(); updateStatusPanel(); draw();
+    }
+
+    function runQuickSimAll30() {
+      runQuickSimAllCount(30);
     }
 
     function runQuickSim100() {
@@ -9047,7 +9087,7 @@
         canvas.style.transform = "";
       }
 
-      draw();
+      if (!fastSimMode) draw();
       requestAnimationFrame(loop);
     }
 
@@ -9144,7 +9184,8 @@
       if (e.target.id === "analysisModal") closeBattleAnalysis();
     });
     $("patchNoteBtn").addEventListener("click", openPatchNotes);
-    $("quickSimAllBtn").addEventListener("click", runQuickSimAll100);
+    $("quickSimAdaptiveBtn").addEventListener("click", runQuickSimAdaptive);
+    $("quickSimAll30Btn").addEventListener("click", runQuickSimAll30);
     $("quickSim100Btn").addEventListener("click", runQuickSim100);
     $("copyMatchupBtn").addEventListener("click", copyMatchupHistory);
     $("resetMatchupBtn").addEventListener("click", resetMatchupHistory);
