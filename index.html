@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v179</title>
+  <title>원형 아레나 v181</title>
   <style>
     :root {
       --bg: #020617;
@@ -825,7 +825,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v179</h1>
+    <h1 id="mainTitle">원형 아레나 v181</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -1401,7 +1401,7 @@
           const my = (s.y + o.y) / 2;
           poly = clipPolygonHalfPlane(poly, mx, my, o.x - s.x, o.y - s.y);
         });
-        return { poly, color: palette[i % palette.length], lit: false, tick: 0, hitCd: {} };
+        return { poly, color: palette[i % palette.length], lit: false, tick: 0 };
       }).filter(c => c.poly.length >= 3);
     }
 
@@ -1409,6 +1409,7 @@
       if (!f || f.baseId !== "prism_iris") return;
       f.irisGlassCells = generateIrisGlassCells(8);
       f.irisLitCount = 0;
+      f.irisFieldHitCd = f.irisFieldHitCd || {};
       f.irisLightCd = 0;
       f.irisFieldFlash = 0.75;
     }
@@ -1421,7 +1422,6 @@
       const cell = pick(unlit);
       cell.lit = true;
       cell.tick = 0;
-      cell.hitCd = {};
       f.irisLitCount = (f.irisLitCount || 0) + 1;
       f.irisLightCd = 0.18;
       const c = polygonCentroid(cell.poly);
@@ -1432,7 +1432,7 @@
       if (f.irisLitCount >= f.irisGlassCells.length) {
         f.irisDamageReductionTimer = Math.max(f.irisDamageReductionTimer || 0, 10.0);
 
-        const burstDamage = 14;
+        const burstDamage = 10;
         enemiesOf(f).forEach(e => {
           if (!e.alive) return;
           damage(e, burstDamage, f, "성유리완성");
@@ -1446,7 +1446,7 @@
         spawnParticles(f.x, f.y, "#f0abfc", 46);
         spawnFloatingText(f.x, f.y - f.r - 38, "피해감소 10초", "#fdf4ff");
         playSound("shield", 1.12);
-        log(`<strong>${escapeHtml(f.name)}</strong> 성유리 완성 · 전체 피해 ${burstDamage} · 10초간 받는 피해 40% 감소`, "스킬");
+        log(`<strong>${escapeHtml(f.name)}</strong> 성유리 완성 · 전체 피해 ${burstDamage} · 10초간 받는 피해 30% 감소`, "스킬");
         initializeIrisField(f);
       }
     }
@@ -1464,29 +1464,22 @@
       f.irisFieldFlash = Math.max(0, (f.irisFieldFlash || 0) - dt);
       f.irisDamageReductionTimer = Math.max(0, (f.irisDamageReductionTimer || 0) - dt);
       if (!f.irisGlassCells || f.irisGlassCells.length === 0) initializeIrisField(f);
-      f.irisGlassCells.forEach(cell => {
-        if (!cell.lit) return;
-        if (!cell.hitCd) cell.hitCd = {};
+      if (!f.irisFieldHitCd) f.irisFieldHitCd = {};
+      Object.keys(f.irisFieldHitCd).forEach(id => {
+        f.irisFieldHitCd[id] = Math.max(0, (f.irisFieldHitCd[id] || 0) - dt);
+      });
 
-        Object.keys(cell.hitCd).forEach(id => {
-          cell.hitCd[id] = Math.max(0, (cell.hitCd[id] || 0) - dt);
-        });
+      enemiesOf(f).forEach(e => {
+        if (!e.alive) return;
+        const cell = f.irisGlassCells.find(c =>
+          c.lit && circleTouchesPolygon(e.x, e.y, Math.max(6, e.r), c.poly)
+        );
+        if (!cell || (f.irisFieldHitCd[e.id] || 0) > 0) return;
 
-        enemiesOf(f).forEach(e => {
-          if (!e.alive) return;
-          const inside = circleTouchesPolygon(e.x, e.y, Math.max(6, e.r), cell.poly);
-          if (!inside) {
-            cell.hitCd[e.id] = 0;
-            return;
-          }
-
-          if ((cell.hitCd[e.id] || 0) <= 0) {
-            damage(e, 2, f, "성유리영역");
-            cell.hitCd[e.id] = 3.0;
-            spawnHitFlash(e.x, e.y, cell.color, 28);
-            spawnFloatingText(e.x, e.y - e.r - 22, "성유리 -2", cell.color);
-          }
-        });
+        damage(e, 2, f, "성유리영역");
+        f.irisFieldHitCd[e.id] = 3.5;
+        spawnHitFlash(e.x, e.y, cell.color, 28);
+        spawnFloatingText(e.x, e.y - e.r - 22, "성유리 -2", cell.color);
       });
     }
 
@@ -1526,6 +1519,7 @@
     }
 
     const patchNotes = [
+      "v181: 이리스 성유리 지속 피해를 이리스 기준 적별 3.5초 쿨타임으로 통합. 겹친 조각·경계 재진입 다중 피해 방지, 완료 피해 10·피해감소 30%·점등 위 상시 피해감소 20% 적용.",
       "v179: 자동 테스트 경량화. 빠른 전체는 10전 후 극단 상성만 20전 추가, 전체 30전과 선택 100전 분리, 계산 중 렌더링 중단.",
       "v178: 이리스 유리 영역 피해를 적별 체류 쿨타임으로 수정. 완성 피해감소 10초, 점등 영역 위 상시 15% 피해감소 추가.",
       "v177: 이리스 점등 영역을 느린 지속 피해로 조정하고, 완성 보상을 보호막 대신 6초간 받는 피해 40% 감소로 변경.",
@@ -1661,9 +1655,9 @@
           tip: "방패 중 반격."
         },
         prism_iris: {
-          damage: "점등영역 3초마다 2 / 완성 전체피해 14",
-          tick: "3초마다 성유리 지속 피해",
-          tip: "점등 영역에 머무르면 지속 피해. 8개 완성 시 6초간 받는 피해 40% 감소."
+          damage: "점등영역 3.5초마다 2 / 완성 전체피해 10",
+          tick: "3.5초마다 성유리 지속 피해",
+          tip: "점등 영역에 머무르면 지속 피해. 8개 완성 시 10초간 받는 피해 30% 감소. 점등 영역 위에서는 상시 20% 피해감소."
         },
         wind_rio: {
           damage: "질풍돌파 10~15 / 풍압충돌 2~5",
@@ -4243,9 +4237,9 @@
 
       if (!fixedDamage && target.baseId === "prism_iris") {
         if ((target.irisDamageReductionTimer || 0) > 0) {
-          final = Math.max(1, Math.round(final * 0.60));
+          final = Math.max(1, Math.round(final * 0.70));
         } else if (isIrisInsideLitGlass(target)) {
-          final = Math.max(1, Math.round(final * 0.85));
+          final = Math.max(1, Math.round(final * 0.80));
         }
       }
 
@@ -4430,9 +4424,9 @@
       let final = Math.max(1, Math.round(amount));
       if (!fixedDamage && target.baseId === "prism_iris") {
         if ((target.irisDamageReductionTimer || 0) > 0) {
-          final = Math.max(1, Math.round(final * 0.60));
+          final = Math.max(1, Math.round(final * 0.70));
         } else if (isIrisInsideLitGlass(target)) {
-          final = Math.max(1, Math.round(final * 0.85));
+          final = Math.max(1, Math.round(final * 0.80));
         }
       }
       if (!fixedDamage && target.baseId === "hero_leon" && (target.heroStage || 0) === 0) {
