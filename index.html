@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v181</title>
+  <title>원형 아레나 v182</title>
   <style>
     :root {
       --bg: #020617;
@@ -825,7 +825,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v181</h1>
+    <h1 id="mainTitle">원형 아레나 v182</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -1020,8 +1020,8 @@
       },
       {
         id: "prism_iris", name: "채광수호 이리스", mark: "彩", role: "수호자", color: "#f472b6",
-        hp: 198, attack: 8, speed: 2.05, range: 82,
-        skillName: "성유리 점유", condition: "피해를 받을 때마다 조각 1개 점등", desc: "점등 영역은 느린 지속 피해를 주며, 완성 시 10초간 피해를 크게 줄이고, 점등 영역 위에서는 상시 소폭 감소한다."
+        hp: 220, attack: 8, speed: 2.05, range: 82,
+        skillName: "성유리 점유", condition: "피해를 받을 때마다 조각 1개 점등", desc: "점등 영역은 느린 지속 피해와 적 이동속도 감소를 주며, 완성 시 10초간 피해를 크게 줄이고, 점등 영역 위에서는 상시 소폭 감소한다."
       },
       {
         id: "wind_rio", name: "바람발 리오", mark: "風", role: "암살자", color: "#22c55e",
@@ -1423,7 +1423,7 @@
       cell.lit = true;
       cell.tick = 0;
       f.irisLitCount = (f.irisLitCount || 0) + 1;
-      f.irisLightCd = 0.18;
+      f.irisLightCd = 0.10;
       const c = polygonCentroid(cell.poly);
       spawnBlast(c.x, c.y, 62, cell.color);
       spawnParticles(c.x, c.y, cell.color, 12);
@@ -1432,7 +1432,7 @@
       if (f.irisLitCount >= f.irisGlassCells.length) {
         f.irisDamageReductionTimer = Math.max(f.irisDamageReductionTimer || 0, 10.0);
 
-        const burstDamage = 10;
+        const burstDamage = 20;
         enemiesOf(f).forEach(e => {
           if (!e.alive) return;
           damage(e, burstDamage, f, "성유리완성");
@@ -1456,6 +1456,20 @@
       return f.irisGlassCells.some(cell =>
         cell.lit && circleTouchesPolygon(f.x, f.y, Math.max(6, f.r), cell.poly)
       );
+    }
+
+    function irisLitGlassSlowMultiplier(f) {
+      if (!f || !f.alive) return 1;
+      const touchingEnemyGlass = fighters.some(owner =>
+        owner.alive &&
+        owner.baseId === "prism_iris" &&
+        areEnemies(owner, f) &&
+        owner.irisGlassCells &&
+        owner.irisGlassCells.some(cell =>
+          cell.lit && circleTouchesPolygon(f.x, f.y, Math.max(6, f.r), cell.poly)
+        )
+      );
+      return touchingEnemyGlass ? 0.82 : 1;
     }
 
     function updateIrisField(f, dt) {
@@ -1519,6 +1533,7 @@
     }
 
     const patchNotes = [
+      "v182: 이리스 체력 220, 점등 쿨타임 0.10초, 점등 성유리 적 이동속도 18% 감소, 완성 광역 피해 20으로 조정.",
       "v181: 이리스 성유리 지속 피해를 이리스 기준 적별 3.5초 쿨타임으로 통합. 겹친 조각·경계 재진입 다중 피해 방지, 완료 피해 10·피해감소 30%·점등 위 상시 피해감소 20% 적용.",
       "v179: 자동 테스트 경량화. 빠른 전체는 10전 후 극단 상성만 20전 추가, 전체 30전과 선택 100전 분리, 계산 중 렌더링 중단.",
       "v178: 이리스 유리 영역 피해를 적별 체류 쿨타임으로 수정. 완성 피해감소 10초, 점등 영역 위 상시 15% 피해감소 추가.",
@@ -1655,9 +1670,9 @@
           tip: "방패 중 반격."
         },
         prism_iris: {
-          damage: "점등영역 3.5초마다 2 / 완성 전체피해 10",
+          damage: "점등영역 3.5초마다 2·이동속도 -18% / 완성 전체피해 20",
           tick: "3.5초마다 성유리 지속 피해",
-          tip: "점등 영역에 머무르면 지속 피해. 8개 완성 시 10초간 받는 피해 30% 감소. 점등 영역 위에서는 상시 20% 피해감소."
+          tip: "점등 영역에 머무르면 지속 피해와 이동속도 18% 감소. 8개 완성 시 10초간 받는 피해 30% 감소. 점등 영역 위에서는 상시 20% 피해감소."
         },
         wind_rio: {
           damage: "질풍돌파 10~15 / 풍압충돌 2~5",
@@ -5023,8 +5038,9 @@
 
       const slow = f.freeze > 0 ? 0.42 : 1;
       const gardenSlow = minaGardenSlowMultiplier(f);
+      const irisGlassSlow = irisLitGlassSlowMultiplier(f);
       const boost = f.baseId === "wind_rio" ? rioMoveBoost(f) : (f.speedBoost > 0 ? 1.45 : 1);
-      return Math.hypot(f.vx, f.vy) * slow * boost * gardenSlow;
+      return Math.hypot(f.vx, f.vy) * slow * boost * gardenSlow * irisGlassSlow;
     }
 
     function useSkill(f, label) {
@@ -5899,6 +5915,7 @@
 
       const slow = f.freeze > 0 ? 0.42 : 1;
       const gardenSlow = minaGardenSlowMultiplier(f);
+      const irisGlassSlow = irisLitGlassSlowMultiplier(f);
       const boost = f.baseId === "wind_rio" ? rioMoveBoost(f) : (f.speedBoost > 0 ? 1.45 : 1);
 
       if ((f.joltStop || 0) > 0) {
@@ -5907,8 +5924,8 @@
         return;
       }
 
-      f.x += f.vx * slow * boost * gardenSlow * dt;
-      f.y += f.vy * slow * boost * gardenSlow * dt;
+      f.x += f.vx * slow * boost * gardenSlow * irisGlassSlow * dt;
+      f.y += f.vy * slow * boost * gardenSlow * irisGlassSlow * dt;
 
       bounceWalls(f);
       // 기본 작은 탄환 공격 제거: 피해는 스킬에서만 발생한다.
