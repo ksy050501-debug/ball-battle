@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v182</title>
+  <title>원형 아레나 v183</title>
   <style>
     :root {
       --bg: #020617;
@@ -825,7 +825,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v182</h1>
+    <h1 id="mainTitle">원형 아레나 v183</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -1533,6 +1533,7 @@
     }
 
     const patchNotes = [
+      "v183: 자동 상대전적과 복사 결과에 양쪽 캐릭터의 평균 잔여 체력·최대 체력 대비 비율을 추가.",
       "v182: 이리스 체력 220, 점등 쿨타임 0.10초, 점등 성유리 적 이동속도 18% 감소, 완성 광역 피해 20으로 조정.",
       "v181: 이리스 성유리 지속 피해를 이리스 기준 적별 3.5초 쿨타임으로 통합. 겹친 조각·경계 재진입 다중 피해 방지, 완료 피해 10·피해감소 30%·점등 위 상시 피해감소 20% 적용.",
       "v179: 자동 테스트 경량화. 빠른 전체는 10전 후 극단 상성만 20전 추가, 전체 30전과 선택 100전 분리, 계산 중 렌더링 중단.",
@@ -8804,12 +8805,20 @@
       return parts[parts.length - 1] || name || "unknown";
     }
 
-    function matchupLine(a, b, aWins, bWins, drawCount = 0) {
+    function matchupLine(a, b, aWins, bWins, drawCount = 0, averageHp = null) {
       const left = characterShortName(a);
       const right = characterShortName(b);
-      return drawCount > 0
+      const score = drawCount > 0
         ? `${left}vs.${right} ${aWins} ${drawCount} ${bWins}`
         : `${left}vs.${right} ${aWins} ${bWins}`;
+      if (!averageHp) return score;
+
+      const hpText = c => {
+        const value = averageHp[c.id] || 0;
+        const percent = c.hp > 0 ? Math.round(value / c.hp * 100) : 0;
+        return `${characterShortName(c)} 평균잔HP ${value.toFixed(1)}/${c.hp} (${percent}%)`;
+      };
+      return `${score} | ${hpText(a)} | ${hpText(b)}`;
     }
 
     function updateMatchupButtons() {
@@ -8889,6 +8898,10 @@
         draw: 0
       };
       const detail = [];
+      const remainingHpTotals = {
+        [chosen[0].id]: 0,
+        [chosen[1].id]: 0
+      };
       let totalTime = 0;
 
       for (let round = 1; round <= count; round++) {
@@ -8906,6 +8919,10 @@
 
         const winnerId = quickWinnerLabel(chosen);
         score[winnerId] = (score[winnerId] || 0) + 1;
+        chosen.forEach(c => {
+          const fighter = fighters.find(f => !f.isSummon && f.baseId === c.id);
+          remainingHpTotals[c.id] += Math.max(0, fighter ? fighter.hp : 0);
+        });
         totalTime += battleTime;
 
         if (count <= 10 || round % 10 === 0) {
@@ -8926,6 +8943,11 @@
         aWins: score[chosen[0].id] || 0,
         bWins: score[chosen[1].id] || 0,
         drawCount: score.draw || 0,
+        remainingHpTotals,
+        averageHp: Object.fromEntries(chosen.map(c => [
+          c.id,
+          count > 0 ? remainingHpTotals[c.id] / count : 0
+        ])),
         avgTime: count > 0 ? (totalTime / count).toFixed(1) : "0.0"
       };
     }
@@ -8967,16 +8989,18 @@
       const bWins = result.bWins;
       const drawCount = result.drawCount;
       const summary = `${a.name} ${aWins}승 / ${b.name} ${bWins}승 / 무승부 ${drawCount}회 · 평균 ${result.avgTime}초`;
+      const hpSummary = `${a.name} 평균 잔HP ${result.averageHp[a.id].toFixed(1)}/${a.hp} (${Math.round(result.averageHp[a.id] / a.hp * 100)}%) · ${b.name} 평균 잔HP ${result.averageHp[b.id].toFixed(1)}/${b.hp} (${Math.round(result.averageHp[b.id] / b.hp * 100)}%)`;
       const rateA = Math.round(aWins / count * 100);
       const rateB = Math.round(bWins / count * 100);
 
-      const line = matchupLine(a, b, aWins, bWins, drawCount);
-      matchupHistory.push({ aId: a.id, bId: b.id, aWins, bWins, drawCount, count, line, at: Date.now() });
+      const line = matchupLine(a, b, aWins, bWins, drawCount, result.averageHp);
+      matchupHistory.push({ aId: a.id, bId: b.id, aWins, bWins, drawCount, count, averageHp: result.averageHp, line, at: Date.now() });
       updateMatchupButtons();
 
       logs = [
         `<div><strong>[자동 ${count}전]</strong> ${escapeHtml(summary)}</div>`,
         `<div>${escapeHtml(a.name)} 승률 ${rateA}% · ${escapeHtml(b.name)} 승률 ${rateB}%</div>`,
+        `<div>${escapeHtml(hpSummary)}</div>`,
         ...result.detail.slice(-14).map(x => `<div>${escapeHtml(x)}</div>`)
       ];
       $("log").innerHTML = logs.join("");
@@ -9020,8 +9044,8 @@
         const progress = `[전체 ${count}전] ${focus.name} · ${i + 1}/${opponents.length} ${opp.name}`;
         $("log").innerHTML = `<div><strong>${escapeHtml(progress)}</strong> 계산 중...</div>`;
         const result = await simulateQuickPair(pair, count, progress);
-        const line = matchupLine(opp, focus, result.aWins, result.bWins, result.drawCount);
-        matchupHistory.push({ aId: opp.id, bId: focus.id, aWins: result.aWins, bWins: result.bWins, drawCount: result.drawCount, count, line, at: Date.now() });
+        const line = matchupLine(opp, focus, result.aWins, result.bWins, result.drawCount, result.averageHp);
+        matchupHistory.push({ aId: opp.id, bId: focus.id, aWins: result.aWins, bWins: result.bWins, drawCount: result.drawCount, count, averageHp: result.averageHp, line, at: Date.now() });
         lines.push(line);
         updateMatchupButtons();
         await new Promise(resolve => setTimeout(resolve, 0));
@@ -9049,14 +9073,22 @@
         $("log").innerHTML = `<div><strong>${escapeHtml(progress)}</strong> 10전 계산 중...</div>`;
         const first = await simulateQuickPair(pair, 10, progress);
         let aWins = first.aWins, bWins = first.bWins, drawCount = first.drawCount, total = 10;
+        const remainingHpTotals = { ...first.remainingHpTotals };
         const focusWins = bWins;
         if (focusWins <= 2 || focusWins >= 8) {
           $("log").innerHTML = `<div><strong>${escapeHtml(progress)}</strong> 극단 상성 감지 · 20전 추가...</div>`;
           const extra = await simulateQuickPair(pair, 20, progress);
-          aWins += extra.aWins; bWins += extra.bWins; drawCount += extra.drawCount; total = 30; refined += 1;
+          aWins += extra.aWins; bWins += extra.bWins; drawCount += extra.drawCount;
+          remainingHpTotals[opp.id] += extra.remainingHpTotals[opp.id];
+          remainingHpTotals[focus.id] += extra.remainingHpTotals[focus.id];
+          total = 30; refined += 1;
         }
-        const line = matchupLine(opp, focus, aWins, bWins, drawCount);
-        matchupHistory.push({ aId: opp.id, bId: focus.id, aWins, bWins, drawCount, count: total, line, at: Date.now() });
+        const averageHp = {
+          [opp.id]: remainingHpTotals[opp.id] / total,
+          [focus.id]: remainingHpTotals[focus.id] / total
+        };
+        const line = matchupLine(opp, focus, aWins, bWins, drawCount, averageHp);
+        matchupHistory.push({ aId: opp.id, bId: focus.id, aWins, bWins, drawCount, count: total, averageHp, line, at: Date.now() });
         lines.push(`${line}${total === 30 ? " · 정밀" : " · 빠름"}`);
         updateMatchupButtons();
         await new Promise(resolve => setTimeout(resolve, 0));
