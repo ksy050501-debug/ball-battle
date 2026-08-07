@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v184</title>
+  <title>원형 아레나 v185</title>
   <style>
     :root {
       --bg: #020617;
@@ -825,7 +825,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v184</h1>
+    <h1 id="mainTitle">원형 아레나 v185</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -1405,7 +1405,7 @@
 
     function initializeIrisField(f) {
       if (!f || f.baseId !== "prism_iris") return;
-      f.irisGlassCells = generateIrisGlassCells(8);
+      f.irisGlassCells = generateIrisGlassCells(6);
       f.irisLitCount = 0;
       f.irisFieldHitCd = f.irisFieldHitCd || {};
       f.irisLightCd = 0;
@@ -1531,6 +1531,7 @@
     }
 
     const patchNotes = [
+      "v185: 이리스의 성유리 완성 필요 조각 수를 8개에서 6개로 줄여 완성 효과 발동 빈도를 높임.",
       "v184: 비밀번호 없이 일반 화면에서 빠른 전체·전체 30전·1대1 100전 자동 테스트와 전적 복사를 사용할 수 있게 변경.",
       "v183: 자동 상대전적과 복사 결과에 양쪽 캐릭터의 평균 잔여 체력·최대 체력 대비 비율을 추가.",
       "v182: 이리스 체력 220, 점등 쿨타임 0.10초, 점등 성유리 적 이동속도 18% 감소, 완성 광역 피해 20으로 조정.",
@@ -1672,7 +1673,7 @@
         prism_iris: {
           damage: "점등영역 3.5초마다 2·이동속도 -18% / 완성 전체피해 20",
           tick: "3.5초마다 성유리 지속 피해",
-          tip: "점등 영역에 머무르면 지속 피해와 이동속도 18% 감소. 8개 완성 시 10초간 받는 피해 30% 감소. 점등 영역 위에서는 상시 20% 피해감소."
+          tip: "점등 영역에 머무르면 지속 피해와 이동속도 18% 감소. 6개 완성 시 10초간 받는 피해 30% 감소. 점등 영역 위에서는 상시 20% 피해감소."
         },
         wind_rio: {
           damage: "질풍돌파 10~15 / 풍압충돌 2~5",
