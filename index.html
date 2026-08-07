@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v183</title>
+  <title>원형 아레나 v184</title>
   <style>
     :root {
       --bg: #020617;
@@ -825,7 +825,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v183</h1>
+    <h1 id="mainTitle">원형 아레나 v184</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -883,14 +883,14 @@
         <button class="ghost" id="soundBtn">효과음 끄기</button>
         <button class="ghost" id="volumeBtn">볼륨 60%</button>
       </div>
-      <div class="button-row" id="simBoostRow" style="width:min(700px,100%);display:none;">
+      <div class="button-row" id="simBoostRow" style="width:min(700px,100%);">
         <button class="primary" id="quickSimAdaptiveBtn">빠른 전체 테스트</button>
         <button class="ghost" id="quickSimAll30Btn">선택 전체 30전</button>
         <button class="ghost" id="quickSim100Btn">1대1 100전</button>
         <button class="ghost" id="copyMatchupBtn">전적 복사</button>
         <button class="ghost" id="resetMatchupBtn">전적 초기화</button>
       </div>
-      <p class="status" id="tipText">카드를 누르면 참가/해제됩니다. 처음에는 전원 불참 상태입니다. 인원 수에 따라 맵 크기가 자동 조절됩니다. 효과음은 기본 켜짐 상태입니다.</p>
+      <p class="status" id="tipText">자동 테스트: 개인전에서 1명을 선택하면 전체 테스트, 2명을 선택하면 1대1 100전을 실행할 수 있습니다.</p>
     </section>
 
     <section class="panel">
@@ -1101,8 +1101,6 @@
     let speedMultiplier = 1;
     let summonCounter = 0;
     let enhancedSimMode = false;
-    let titleClickCount = 0;
-    let titleClickTimer = 0;
     let fastSimMode = false;
     let screenShake = 0;
 
@@ -1533,6 +1531,7 @@
     }
 
     const patchNotes = [
+      "v184: 비밀번호 없이 일반 화면에서 빠른 전체·전체 30전·1대1 100전 자동 테스트와 전적 복사를 사용할 수 있게 변경.",
       "v183: 자동 상대전적과 복사 결과에 양쪽 캐릭터의 평균 잔여 체력·최대 체력 대비 비율을 추가.",
       "v182: 이리스 체력 220, 점등 쿨타임 0.10초, 점등 성유리 적 이동속도 18% 감소, 완성 광역 피해 20으로 조정.",
       "v181: 이리스 성유리 지속 피해를 이리스 기준 적별 3.5초 쿨타임으로 통합. 겹친 조각·경계 재진입 다중 피해 방지, 완료 피해 10·피해감소 30%·점등 위 상시 피해감소 20% 적용.",
@@ -8770,35 +8769,6 @@
     }
 
 
-    function setEnhancedSimMode(on) {
-      enhancedSimMode = !!on;
-      const row = $("simBoostRow");
-      if (row) row.style.display = enhancedSimMode ? "grid" : "none";
-      if (enhancedSimMode) {
-        speedMultiplier = Math.min(speedMultiplier, 4);
-        $("speedBtn").textContent = `배속 ${speedMultiplier}x`;
-        $("tipText").innerHTML = "시뮬레이션 강화 모드: 빠른 전체·전체 30전·1대1 100전 사용 가능.";
-        showOverlay("시뮬레이션 강화 모드", "경량 자동 테스트와 훈련용 더미가 열렸습니다.");
-        renderAll();
-        updateMatchupButtons();
-      }
-      updateHud();
-    }
-
-    function tryUnlockEnhancedMode() {
-      const now = performance.now();
-      if (now - titleClickTimer > 1200) titleClickCount = 0;
-      titleClickTimer = now;
-      titleClickCount += 1;
-
-      if (titleClickCount >= 3) {
-        titleClickCount = 0;
-        const pw = prompt("시뮬레이션 강화 모드 비밀번호");
-        if (pw === "0806") setEnhancedSimMode(true);
-        else if (pw !== null) showOverlay("비밀번호 오류", "강화 모드가 열리지 않았습니다.");
-      }
-    }
-
     function characterShortName(c) {
       const name = typeof c === "string" ? c : (c?.name || "");
       const parts = name.trim().split(/\s+/);
@@ -8868,11 +8838,6 @@
     }
 
     function quickSimValidation(count) {
-      if (!enhancedSimMode) {
-        showOverlay("강화 모드 필요", "타이틀을 3번 클릭하고 비밀번호 0806을 입력하면 사용할 수 있습니다.");
-        return null;
-      }
-
       if (battleMode !== "solo") {
         showOverlay("개인전 전용", `자동 ${count}전은 개인전에서 캐릭터 2명을 선택했을 때 작동합니다.`);
         return null;
@@ -9011,10 +8976,6 @@
     }
 
     function validateAllSimFocus(label) {
-      if (!enhancedSimMode) {
-        showOverlay("강화 모드 필요", "타이틀을 3번 클릭하고 비밀번호 0806을 입력하면 사용할 수 있습니다.");
-        return null;
-      }
       if (battleMode !== "solo") {
         showOverlay("개인전 전용", `${label}은 개인전에서 캐릭터 1명을 선택했을 때 작동합니다.`);
         return null;
@@ -9232,7 +9193,6 @@
     $("quickSim100Btn").addEventListener("click", runQuickSim100);
     $("copyMatchupBtn").addEventListener("click", copyMatchupHistory);
     $("resetMatchupBtn").addEventListener("click", resetMatchupHistory);
-    $("mainTitle").addEventListener("click", tryUnlockEnhancedMode);
     $("patchModalClose").addEventListener("click", closePatchNotes);
     $("patchModal").addEventListener("click", e => {
       if (e.target.id === "patchModal") closePatchNotes();
