@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v187</title>
+  <title>원형 아레나 v188</title>
   <style>
     :root {
       --bg: #020617;
@@ -543,6 +543,49 @@
       font-weight: 1000;
     }
 
+    .matrix-wrap {
+      margin-top: 10px;
+      overflow: auto;
+      border: 1px solid rgba(96,165,250,.22);
+      border-radius: 12px;
+      background: rgba(2,6,23,.58);
+    }
+
+    .matchup-matrix {
+      border-collapse: collapse;
+      min-width: 760px;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .matchup-matrix th,
+    .matchup-matrix td {
+      padding: 6px 7px;
+      border: 1px solid rgba(255,255,255,.08);
+      white-space: nowrap;
+    }
+
+    .matchup-matrix th {
+      position: sticky;
+      top: 0;
+      background: #172554;
+      color: #dbeafe;
+    }
+
+    .matchup-matrix th:first-child,
+    .matchup-matrix td:first-child {
+      position: sticky;
+      left: 0;
+      background: #172554;
+      color: #dbeafe;
+      font-weight: 900;
+    }
+
+    .matchup-matrix td.self {
+      color: #64748b;
+      background: rgba(255,255,255,.03);
+    }
+
     .log {
       height: 355px;
       overflow: auto;
@@ -825,7 +868,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v187</h1>
+    <h1 id="mainTitle">원형 아레나 v188</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -887,10 +930,11 @@
         <button class="primary" id="quickSimAdaptiveBtn">빠른 전체 테스트</button>
         <button class="ghost" id="quickSimAll30Btn">선택 전체 30전</button>
         <button class="ghost" id="quickSim100Btn">1대1 100전</button>
+        <button class="warn" id="fullMatrix30Btn">전체 상성표 30전</button>
         <button class="ghost" id="copyMatchupBtn">전적 복사</button>
         <button class="ghost" id="resetMatchupBtn">전적 초기화</button>
       </div>
-      <p class="status" id="tipText">자동 테스트: 개인전에서 1명을 선택하면 전체 테스트, 2명을 선택하면 1대1 100전을 실행할 수 있습니다.</p>
+      <p class="status" id="tipText">자동 테스트: 1명 선택은 전체 테스트, 2명 선택은 1대1 100전, 전체 상성표는 모든 조합을 한 번씩 30전으로 계산합니다.</p>
     </section>
 
     <section class="panel">
@@ -1531,6 +1575,7 @@
     }
 
     const patchNotes = [
+      "v188: 전체 상성표 30전 추가 — 모든 캐릭터 조합을 중복 없이 30전씩 계산하고 승-무-패 표와 복사용 전적을 생성.",
       "v187: 역할별 체력 체계 리메이크 — 마법사·저격수·지원가 100, 전사·암살자 150, 수호자 200으로 통일.",
       "v186: 이리스 체력을 220에서 260으로 조정.",
       "v185: 이리스의 성유리 완성 필요 조각 수를 8개에서 6개로 줄여 완성 효과 발동 빈도를 높임.",
@@ -9069,6 +9114,59 @@
       runQuickSimAllCount(30);
     }
 
+    function matchupMatrixHtml(roster, entries) {
+      const lookup = new Map(entries.map(entry => [`${entry.aId}|${entry.bId}`, entry]));
+      const cell = (row, col) => {
+        if (row.id === col.id) return '<td class="self">—</td>';
+        const direct = lookup.get(`${row.id}|${col.id}`);
+        const reverse = lookup.get(`${col.id}|${row.id}`);
+        const result = direct || reverse;
+        if (!result) return '<td>·</td>';
+        const rowWins = direct ? result.aWins : result.bWins;
+        const rowLosses = direct ? result.bWins : result.aWins;
+        const score = result.drawCount ? `${rowWins}-${result.drawCount}-${rowLosses}` : `${rowWins}-${rowLosses}`;
+        return `<td title="승-무-패">${score}</td>`;
+      };
+      return `<div class="matrix-wrap"><table class="matchup-matrix"><thead><tr><th>승-무-패</th>${roster.map(c => `<th>${escapeHtml(characterShortName(c))}</th>`).join("")}</tr></thead><tbody>${roster.map(row => `<tr><th>${escapeHtml(characterShortName(row))}</th>${roster.map(col => cell(row, col)).join("")}</tr>`).join("")}</tbody></table></div>`;
+    }
+
+    async function runFullMatchupMatrix(count = 30) {
+      if (battleMode !== "solo") {
+        showOverlay("개인전 전용", "전체 상성표는 개인전에서 계산합니다.");
+        return;
+      }
+      const roster = battleRosterCharacters();
+      const totalPairs = roster.length * (roster.length - 1) / 2;
+      const prev = beginFastSim(`상성표${count}전`);
+      const entries = [];
+
+      for (let i = 0; i < roster.length; i++) {
+        for (let j = i + 1; j < roster.length; j++) {
+          const a = roster[i];
+          const b = roster[j];
+          const matchIndex = entries.length + 1;
+          const progress = `[전체 상성표 ${count}전] ${matchIndex}/${totalPairs} ${a.name} vs ${b.name}`;
+          $("log").innerHTML = `<div><strong>${escapeHtml(progress)}</strong> 계산 중...</div>`;
+          const result = await simulateQuickPair([a, b], count, progress);
+          const line = matchupLine(a, b, result.aWins, result.bWins, result.drawCount, result.averageHp);
+          const entry = { aId: a.id, bId: b.id, aWins: result.aWins, bWins: result.bWins, drawCount: result.drawCount, count, averageHp: result.averageHp, line, at: Date.now() };
+          entries.push(entry);
+          matchupHistory.push(entry);
+          updateMatchupButtons();
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      endFastSim(prev);
+      logs = [
+        `<div><strong>[전체 상성표 ${count}전 완료]</strong> ${roster.length}명 · ${totalPairs}개 조합 · 셀은 행 캐릭터 기준 승-무-패</div>`,
+        matchupMatrixHtml(roster, entries)
+      ];
+      $("log").innerHTML = logs.join("");
+      showOverlay(`전체 상성표 ${count}전 완료`, `${roster.length}명 ${totalPairs}개 조합의 전적을 표와 복사 목록에 저장했습니다.`);
+      updateHud(); updateStatusPanel(); draw();
+    }
+
     function runQuickSim100() {
       runQuickSimCount(100);
     }
@@ -9194,6 +9292,7 @@
     $("quickSimAdaptiveBtn").addEventListener("click", runQuickSimAdaptive);
     $("quickSimAll30Btn").addEventListener("click", runQuickSimAll30);
     $("quickSim100Btn").addEventListener("click", runQuickSim100);
+    $("fullMatrix30Btn").addEventListener("click", () => runFullMatchupMatrix(30));
     $("copyMatchupBtn").addEventListener("click", copyMatchupHistory);
     $("resetMatchupBtn").addEventListener("click", resetMatchupHistory);
     $("patchModalClose").addEventListener("click", closePatchNotes);
