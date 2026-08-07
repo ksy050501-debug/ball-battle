@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v186</title>
+  <title>원형 아레나 v187</title>
   <style>
     :root {
       --bg: #020617;
@@ -825,7 +825,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v186</h1>
+    <h1 id="mainTitle">원형 아레나 v187</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -1010,78 +1010,78 @@
     const characters = [
       {
         id: "flame_tori", name: "화염구슬 토리", mark: "火", role: "마법사", color: "#ef4444",
-        hp: 132, attack: 14, speed: 2.6, range: 120,
+        hp: 100, attack: 14, speed: 2.6, range: 120,
         skillName: "미사일-미사일-파이어볼", condition: "3.2초마다 1회 공격: 1회 미사일, 2회 미사일, 3회 파이어볼", desc: "미사일 2번 뒤 파이어볼. 화상과 메테오."
       },
       {
         id: "steel_moro", name: "강철방패 모로", mark: "盾", role: "수호자", color: "#64748b",
-        hp: 220, attack: 10, speed: 1.8, range: 70,
+        hp: 200, attack: 10, speed: 1.8, range: 70,
         skillName: "영구 철벽반사", condition: "방패 없을 때 벽 충돌 5회", desc: "방패, 반격, 성장, 후려치기."
       },
       {
         id: "prism_iris", name: "채광수호 이리스", mark: "彩", role: "수호자", color: "#f472b6",
-        hp: 260, attack: 8, speed: 2.05, range: 82,
+        hp: 200, attack: 8, speed: 2.05, range: 82,
         skillName: "성유리 점유", condition: "피해를 받을 때마다 조각 1개 점등", desc: "점등 영역은 느린 지속 피해와 적 이동속도 감소를 주며, 완성 시 10초간 피해를 크게 줄이고, 점등 영역 위에서는 상시 소폭 감소한다."
       },
       {
         id: "wind_rio", name: "바람발 리오", mark: "風", role: "암살자", color: "#22c55e",
-        hp: 112, attack: 13, speed: 4.2, range: 78,
+        hp: 150, attack: 13, speed: 4.2, range: 78,
         skillName: "질풍돌파", condition: "벽 충돌 3회", desc: "벽을 타고 가속. 5가속마다 보호막과 정화."
       },
       {
         id: "healer_mina", name: "초록별 미나", mark: "+", role: "지원가", color: "#10b981",
-        hp: 110, attack: 6, speed: 2.4, range: 110,
+        hp: 100, attack: 6, speed: 2.4, range: 110,
         skillName: "회복정원", condition: "12.5초마다 또는 체력 40% 이하", desc: "체력은 낮지만 회복정원 안에서 버틴다. 정원 둔화와 회복량은 v77보다 낮아졌다."
       },
       {
         id: "poison_zen", name: "독가스 젠", mark: "毒", role: "암살자", color: "#84cc16",
-        hp: 116, attack: 10, speed: 3.3, range: 92,
+        hp: 150, attack: 10, speed: 3.3, range: 92,
         skillName: "독가스·독폭발", condition: "6초마다 독가스 / 감염 적과 충돌 시 독폭발", desc: "독가스로 잔류 독을 남긴다. 감염된 적의 직접 피해를 약화한다."
       },
       {
         id: "blink_dodo", name: "깜짝이동 도도", mark: "瞬", role: "전사", color: "#06b6d4",
-        hp: 116, attack: 17, speed: 3.0, range: 108,
+        hp: 150, attack: 17, speed: 3.0, range: 108,
         skillName: "균열이동·공간붕괴", condition: "벽에 4회 튕기면 균열이동 / 균열장판 5회 시 공간붕괴", desc: "도착 위치에 균열을 만들고, 균열을 5회 쌓으면 맵에서 사라진 뒤 연속 공간습격을 한다."
       },
       {
         id: "purple_sia", name: "보랏빛 시아", mark: "幻", role: "마법사", color: "#a855f7",
-        hp: 114, attack: 15, speed: 2.7, range: 126,
+        hp: 100, attack: 15, speed: 2.7, range: 126,
         skillName: "분신난무·분신도주", condition: "5초마다 분신난무 / 사망 피해 시 분신도주 3회", desc: "분신이 다시 체력을 가지며, 시아는 사망 피해를 받을 때 최대 세 번 분신 위치로 도망치고 체력 15로 버틴다."
       },
       {
         id: "rage_baro", name: "광전사 바로", mark: "狂", role: "전사", color: "#991b1b",
-        hp: 152, attack: 15, speed: 3.25, range: 76,
+        hp: 150, attack: 15, speed: 3.25, range: 76,
         skillName: "회전격·불사광폭", condition: "2.6초마다 회전격 / 체력 0 시 5초 불사", desc: "사분원 예고 후 회전격. 체력 0 시 불사광폭."
       },
       {
         id: "artillery_brik", name: "포격병 브릭", mark: "砲", role: "저격수", color: "#f97316",
-        hp: 126, attack: 10, speed: 2.4, range: 118,
+        hp: 100, attack: 10, speed: 2.4, range: 118,
         skillName: "포화명령", condition: "8초마다 삼각 구역 폭격", desc: "삼각 구역 예고 후 대폭격."
       },
       {
         id: "vampire_luka", name: "흡혈귀 블라드", mark: "血", role: "전사", color: "#be123c",
-        hp: 92, attack: 9, speed: 2.8, range: 58,
+        hp: 150, attack: 9, speed: 2.8, range: 58,
         skillName: "밤의 사냥", condition: "낮 자해 / 밤 추적·흡혈 제압", desc: "낮에는 햇빛 피해를 받고, 밤에는 밤의 장막을 두른 채 적을 추적해 흡혈 제압한다."
       },
       {
         id: "chain_nox", name: "사슬추적자 노크", mark: "鎖", role: "암살자", color: "#7f1d1d",
-        hp: 132, attack: 11, speed: 2.78, range: 96,
+        hp: 150, attack: 11, speed: 2.78, range: 96,
         skillName: "벽사슬·지연폭발", condition: "4.4초마다 랜덤 벽면에 사슬 1개 발사", desc: "상대를 직접 추격하지 않고 랜덤 벽면을 향해 사슬을 발사한 뒤 그 지점으로 빠르게 이동한다. 남은 사슬은 접촉 출혈을 주고, 잠시 뒤 좁은 범위로 폭발한다."
       },
       {
         id: "hero_leon", name: "시골소년 레온", mark: "勇", role: "전사", color: "#64748b",
-        hp: 124, attack: 8, speed: 2.55, range: 74,
+        hp: 150, attack: 8, speed: 2.55, range: 74,
         skillName: "용사의 성장", condition: "20/23/26/29초 차등 성장", desc: "초반 방어형. 후반 검격 강화."
       },
       {
         id: "dummy_unit", name: "훈련용 더미", mark: "木", role: "더미", color: "#9ca3af",
-        hp: 120, attack: 0, speed: 2.35, range: 0,
+        hp: 100, attack: 0, speed: 2.35, range: 0,
         simOnly: true,
         skillName: "공격 없음", condition: "이동만 함 / 무한 부활", desc: "공격하지 않는 테스트용 더미."
       },
       {
         id: "thunder_jin", name: "번개눈 진", mark: "雷", role: "마법사", color: "#38bdf8",
-        hp: 106, attack: 9, speed: 2.6, range: 135,
+        hp: 100, attack: 9, speed: 2.6, range: 135,
         skillName: "전류탄·과전류", condition: "전류탄 3.2초+짧은 시전 / 과전류 30초+피해충전", desc: "전류탄은 아주 짧게 시전하고, 과전류는 충전 즉시 발동한다."
       }
     ];
@@ -1531,6 +1531,7 @@
     }
 
     const patchNotes = [
+      "v187: 역할별 체력 체계 리메이크 — 마법사·저격수·지원가 100, 전사·암살자 150, 수호자 200으로 통일.",
       "v186: 이리스 체력을 220에서 260으로 조정.",
       "v185: 이리스의 성유리 완성 필요 조각 수를 8개에서 6개로 줄여 완성 효과 발동 빈도를 높임.",
       "v184: 비밀번호 없이 일반 화면에서 빠른 전체·전체 30전·1대1 100전 자동 테스트와 전적 복사를 사용할 수 있게 변경.",
