@@ -26,9 +26,10 @@ After changing anything:
 3. Add one concise patch-note entry at the top of the patch-note list.
 4. Keep the output filename as `index.html`.
 5. Run a JavaScript syntax check, preferably by extracting the main script and running `node --check`.
-6. Run focused checks for the changed logic when practical.
-7. Commit the completed change to `main` unless the user asks for a branch or pull request.
-8. Report the version, concise change summary, test result, and commit SHA.
+6. For every balance, character, or combat-rule patch, automatically run the relevant in-browser battle simulation before reporting completion. Use the selected-character 30-battle-per-opponent test for a character balance patch when available, and report win/loss/draw plus average remaining HP.
+7. Run focused checks for the changed logic when practical.
+8. Commit the completed change to `main` unless the user asks for a branch or pull request.
+9. Report the version, concise change summary, test result, and commit SHA.
 
 ## Editing rules
 
