@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v192</title>
+  <title>원형 아레나 v193</title>
   <style>
     :root {
       --bg: #020617;
@@ -868,7 +868,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v191</h1>
+    <h1 id="mainTitle">원형 아레나 v193</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -1065,7 +1065,7 @@
       {
         id: "prism_iris", name: "채광수호 이리스", mark: "彩", role: "수호자", color: "#f472b6",
         hp: 260, attack: 8, speed: 2.05, range: 82,
-        skillName: "성유리 점유", condition: "피해를 받을 때마다 조각 1개 점등", desc: "새 조각 점등 위 적은 즉시 피해를 받고, 점등 영역은 느린 지속 피해와 적 이동속도 감소를 준다. 완성 후 체력에 따라 다음 유리는 8·6·4칸으로 재구성된다."
+        skillName: "프리즘 가속 돌진", condition: "5.5초마다 가장 가까운 적 돌진", desc: "점등 장판에서 돌진하면 보호막을 얻고, 점등 장판에서 충돌하면 적의 성유리 피해가 커진다."
       },
       {
         id: "wind_rio", name: "바람발 리오", mark: "風", role: "암살자", color: "#22c55e",
@@ -1538,6 +1538,48 @@
       return touchingEnemyGlass ? 0.82 : 1;
     }
 
+    function startIrisPrismCharge(f) {
+      if (!f || !f.alive || f.baseId !== "prism_iris" || (f.irisChargeCd || 0) > 0 || (f.irisCharge || 0) > 0) return;
+      const target = nearestEnemy(f).enemy;
+      if (!target) return;
+      const dx = target.x - f.x, dy = target.y - f.y;
+      const d = Math.hypot(dx, dy) || 1;
+      f.irisCharge = 1.15;
+      f.irisChargeCd = 5.5;
+      f.irisChargeStartLit = isIrisInsideLitGlass(f);
+      const chargeSpeed = f.baseSpeed * 44 * 2.0;
+      f.vx = dx / d * chargeSpeed;
+      f.vy = dy / d * chargeSpeed;
+      spawnParticles(f.x, f.y, "#f9a8d4", 12);
+      spawnFloatingText(f.x, f.y - f.r - 28, "프리즘 돌진", "#fce7f3");
+    }
+
+    function applyIrisPrismChargeContact(iris, target) {
+      if (!iris || !target || !iris.alive || !target.alive || (iris.irisCharge || 0) <= 0) return;
+      iris.irisCharge = 0;
+      const power = 9;
+      damage(target, power, iris, "프리즘돌진");
+      const dx = target.x - iris.x, dy = target.y - iris.y;
+      const d = Math.hypot(dx, dy) || 1;
+      target.vx = dx / d * target.baseSpeed * 44 * 1.25;
+      target.vy = dy / d * target.baseSpeed * 44 * 1.25;
+      spawnHitFlash(target.x, target.y, "#fce7f3", 46);
+      spawnFloatingText(target.x, target.y - target.r - 26, "돌진 -" + power, "#fce7f3");
+      if (iris.irisChargeStartLit) {
+        iris.irisPrismShieldHp = Math.max(iris.irisPrismShieldHp || 0, 14);
+        iris.irisPrismShieldTimer = Math.max(iris.irisPrismShieldTimer || 0, 4.0);
+        spawnFloatingText(iris.x, iris.y - iris.r - 42, "프리즘 보호막 14", "#fce7f3");
+      }
+      const impactX = (iris.x + target.x) / 2, impactY = (iris.y + target.y) / 2;
+      const impactOnLitGlass = (iris.irisGlassCells || []).some(cell => cell.lit && circleTouchesPolygon(impactX, impactY, 5, cell.poly));
+      if (impactOnLitGlass) {
+        target.irisGlassVulnerabilityTimer = 5.0;
+        target.irisGlassVulnerabilitySourceId = iris.id;
+        spawnFloatingText(target.x, target.y - target.r - 44, "굴절 취약", "#f9a8d4");
+      }
+      iris.irisChargeStartLit = false;
+    }
+
     function updateIrisField(f, dt) {
       if (!f || !f.alive || f.baseId !== "prism_iris") return;
       f.irisLightCd = Math.max(0, (f.irisLightCd || 0) - dt);
@@ -1560,10 +1602,12 @@
         );
         if (!cell || (f.irisFieldHitCd[e.id] || 0) > 0) return;
 
-        damage(e, 2, f, "성유리영역");
+        const vulnerable = e.irisGlassVulnerabilitySourceId === f.id && (e.irisGlassVulnerabilityTimer || 0) > 0;
+        const fieldDamage = vulnerable ? 3 : 2;
+        damage(e, fieldDamage, f, "성유리영역");
         f.irisFieldHitCd[e.id] = 3.5;
         spawnHitFlash(e.x, e.y, cell.color, 28);
-        spawnFloatingText(e.x, e.y - e.r - 22, "성유리 -2", cell.color);
+        spawnFloatingText(e.x, e.y - e.r - 22, "성유리 -" + fieldDamage, cell.color);
       });
     }
 
@@ -1603,6 +1647,7 @@
     }
 
     const patchNotes = [
+      "v193: 이리스 프리즘 가속 돌진 추가 — 점등 장판 출발 시 보호막 14, 점등 장판 충돌 시 적 성유리 취약 5초(장판 피해 2→3).",
       "v192: 이리스 새 성유리 점등 순간 그 위 적에게 즉시 5 피해. 적별 1초 제한, 장판 지속 피해는 3.5초 뒤 재개.",
       "v191: 이리스 성유리 완성 광역 피해 20→24, 완성 빙결 0.55초→1.2초.",
       "v190: 이리스 성유리 완성 후 다음 필드를 체력 비율에 따라 8·6·4칸으로 재구성.",
@@ -1750,9 +1795,9 @@
           tip: "방패 중 반격."
         },
         prism_iris: {
-          damage: "새 점등 위 적 5 / 점등영역 3.5초마다 2·이동속도 -18% / 완성 전체피해 24·빙결 1.2초",
-          tick: "점등 즉시 5(적별 1초 제한) / 3.5초마다 성유리 지속 피해",
-          tip: "새 조각 점등 순간 그 위 적은 5 피해(적별 1초 제한)를 받고, 이후 장판 피해는 3.5초 뒤부터 적용. 점등 영역은 이동속도 18% 감소. 완성 뒤 체력 75% 초과는 8칸, 25% 초과는 6칸, 그 이하는 4칸으로 재구성. 완성 시 전체 피해 24·빙결 1.2초와 10초간 피해감소."
+          damage: "프리즘 돌진 9 / 새 점등 위 적 5 / 점등영역 3.5초마다 2(취약 3)·이동속도 -18% / 완성 전체피해 24·빙결 1.2초",
+          tick: "돌진 5.5초 / 점등 즉시 5(적별 1초 제한) / 3.5초마다 성유리 지속 피해",
+          tip: "5.5초마다 가까운 적에게 돌진해 9 피해. 점등 장판 출발은 보호막 14, 점등 장판 충돌은 성유리 취약 5초(장판 2→3). 새 조각 점등 순간 위 적은 5 피해(적별 1초 제한)."
         },
         wind_rio: {
           damage: "질풍돌파 10~15 / 풍압충돌 2~5",
@@ -2167,6 +2212,13 @@
         irisLightCd: 0,
         irisFieldFlash: 0,
         irisDamageReductionTimer: 0,
+        irisCharge: 0,
+        irisChargeCd: 0,
+        irisChargeStartLit: false,
+        irisPrismShieldHp: 0,
+        irisPrismShieldTimer: 0,
+        irisGlassVulnerabilityTimer: 0,
+        irisGlassVulnerabilitySourceId: "",
         poisonTicks: [],
         burningTicks: [],
         freeze: 0,
@@ -4353,6 +4405,15 @@
 
       playSound("hit", Math.min(1.4, final / 12));
 
+      // 프리즘 보호막은 점등 장판에서 시작한 이리스 돌진의 짧은 체력형 보호막이다.
+      if (target.baseId === "prism_iris" && (target.irisPrismShieldHp || 0) > 0) {
+        const absorbedPrism = Math.min(target.irisPrismShieldHp, final);
+        target.irisPrismShieldHp -= absorbedPrism;
+        final = Math.max(0, final - absorbedPrism);
+        spawnFloatingText(target.x, target.y - target.r - 20, "프리즘보호막 -" + Math.round(absorbedPrism), "#fce7f3");
+        if (final <= 0) return 0;
+      }
+
       // 진의 전기배리어는 1회만 피해 10을 흡수한다. 누적되지 않는다.
       // 투사체/마법을 맞았을 때 상대에게 감전 반사를 하지 않는다.
       // 접촉 방전은 과전류 중 직접 접촉 처리에서만 발생한다.
@@ -5116,6 +5177,8 @@
         ensureRioPermanentVelocity(f);
       }
 
+      if (f.baseId === "prism_iris") startIrisPrismCharge(f);
+
       const slow = f.freeze > 0 ? 0.42 : 1;
       const gardenSlow = minaGardenSlowMultiplier(f);
       const irisGlassSlow = irisLitGlassSlowMultiplier(f);
@@ -5822,6 +5885,12 @@
 
       f.attackCd -= dt;
       f.contactCd -= dt;
+      f.irisCharge = Math.max(0, (f.irisCharge || 0) - dt);
+      f.irisChargeCd = Math.max(0, (f.irisChargeCd || 0) - dt);
+      f.irisPrismShieldTimer = Math.max(0, (f.irisPrismShieldTimer || 0) - dt);
+      if ((f.irisPrismShieldTimer || 0) <= 0) f.irisPrismShieldHp = 0;
+      f.irisGlassVulnerabilityTimer = Math.max(0, (f.irisGlassVulnerabilityTimer || 0) - dt);
+      if ((f.irisGlassVulnerabilityTimer || 0) <= 0) f.irisGlassVulnerabilitySourceId = "";
       f.vampSuppressed = Math.max(0, (f.vampSuppressed || 0) - dt);
       f.shield = Math.max(0, f.shield - dt);
       f.freeze = Math.max(0, f.freeze - dt);
@@ -6152,6 +6221,10 @@
               // 진 과전류 배리어는 직접 부딪힌 상대에게 방전 피해와 경직을 준다.
               if (a.baseId === "thunder_jin") zapJinBarrierContact(a, b);
               if (b.baseId === "thunder_jin") zapJinBarrierContact(b, a);
+
+              // 프리즘 돌진은 첫 적 충돌에서 종료되며, 시작점/충돌지점 장판 효과는 함께 발동할 수 있다.
+              if (a.baseId === "prism_iris") applyIrisPrismChargeContact(a, b);
+              if (b.baseId === "prism_iris") applyIrisPrismChargeContact(b, a);
 
               // 모로는 이제 캐릭터 충돌이 아니라 벽 충돌만 방패 조건에 포함된다.
 
