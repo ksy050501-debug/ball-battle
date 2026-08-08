@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v191</title>
+  <title>원형 아레나 v192</title>
   <style>
     :root {
       --bg: #020617;
@@ -1065,7 +1065,7 @@
       {
         id: "prism_iris", name: "채광수호 이리스", mark: "彩", role: "수호자", color: "#f472b6",
         hp: 260, attack: 8, speed: 2.05, range: 82,
-        skillName: "성유리 점유", condition: "피해를 받을 때마다 조각 1개 점등", desc: "점등 영역은 느린 지속 피해와 적 이동속도 감소를 준다. 완성 후 체력에 따라 다음 유리는 8·6·4칸으로 재구성된다."
+        skillName: "성유리 점유", condition: "피해를 받을 때마다 조각 1개 점등", desc: "새 조각 점등 위 적은 즉시 피해를 받고, 점등 영역은 느린 지속 피해와 적 이동속도 감소를 준다. 완성 후 체력에 따라 다음 유리는 8·6·4칸으로 재구성된다."
       },
       {
         id: "wind_rio", name: "바람발 리오", mark: "風", role: "암살자", color: "#22c55e",
@@ -1459,6 +1459,7 @@
       f.irisGlassCells = generateIrisGlassCells(cellCount);
       f.irisLitCount = 0;
       f.irisFieldHitCd = f.irisFieldHitCd || {};
+      f.irisLightHitCd = f.irisLightHitCd || {};
       f.irisLightCd = 0;
       f.irisFieldFlash = 0.75;
     }
@@ -1473,6 +1474,20 @@
       cell.tick = 0;
       f.irisLitCount = (f.irisLitCount || 0) + 1;
       f.irisLightCd = 0.10;
+
+      // 새 조각이 켜진 순간 그 위에 있던 적만 즉시 맞는다.
+      // 적별 1초 제한으로 여러 조각이 짧은 간격에 켜져도 중첩되지 않는다.
+      enemiesOf(f).forEach(e => {
+        if (!e.alive || (f.irisLightHitCd[e.id] || 0) > 0) return;
+        if (!circleTouchesPolygon(e.x, e.y, Math.max(6, e.r), cell.poly)) return;
+        damage(e, 5, f, "성유리점등");
+        f.irisLightHitCd[e.id] = 1.0;
+        // 점등 피해 뒤에는 장판 지속 피해를 3.5초 뒤에 시작한다.
+        f.irisFieldHitCd[e.id] = 3.5;
+        spawnHitFlash(e.x, e.y, cell.color, 36);
+        spawnFloatingText(e.x, e.y - e.r - 24, "점등 -5", cell.color);
+      });
+
       const c = polygonCentroid(cell.poly);
       spawnBlast(c.x, c.y, 62, cell.color);
       spawnParticles(c.x, c.y, cell.color, 12);
@@ -1530,8 +1545,12 @@
       f.irisDamageReductionTimer = Math.max(0, (f.irisDamageReductionTimer || 0) - dt);
       if (!f.irisGlassCells || f.irisGlassCells.length === 0) initializeIrisField(f);
       if (!f.irisFieldHitCd) f.irisFieldHitCd = {};
+      if (!f.irisLightHitCd) f.irisLightHitCd = {};
       Object.keys(f.irisFieldHitCd).forEach(id => {
         f.irisFieldHitCd[id] = Math.max(0, (f.irisFieldHitCd[id] || 0) - dt);
+      });
+      Object.keys(f.irisLightHitCd).forEach(id => {
+        f.irisLightHitCd[id] = Math.max(0, (f.irisLightHitCd[id] || 0) - dt);
       });
 
       enemiesOf(f).forEach(e => {
@@ -1584,6 +1603,7 @@
     }
 
     const patchNotes = [
+      "v192: 이리스 새 성유리 점등 순간 그 위 적에게 즉시 5 피해. 적별 1초 제한, 장판 지속 피해는 3.5초 뒤 재개.",
       "v191: 이리스 성유리 완성 광역 피해 20→24, 완성 빙결 0.55초→1.2초.",
       "v190: 이리스 성유리 완성 후 다음 필드를 체력 비율에 따라 8·6·4칸으로 재구성.",
       "v189: 역할별 체력 통일 리메이크 롤백 — 각 캐릭터를 v186의 개별 체력으로 복구. 상성표·이리스 패치는 유지.",
@@ -1730,9 +1750,9 @@
           tip: "방패 중 반격."
         },
         prism_iris: {
-          damage: "점등영역 3.5초마다 2·이동속도 -18% / 완성 전체피해 24·빙결 1.2초",
-          tick: "3.5초마다 성유리 지속 피해",
-          tip: "점등 영역에 머무르면 지속 피해와 이동속도 18% 감소. 완성 뒤 체력 75% 초과는 8칸, 25% 초과는 6칸, 그 이하는 4칸으로 재구성. 완성 시 전체 피해 24·빙결 1.2초와 10초간 피해감소."
+          damage: "새 점등 위 적 5 / 점등영역 3.5초마다 2·이동속도 -18% / 완성 전체피해 24·빙결 1.2초",
+          tick: "점등 즉시 5(적별 1초 제한) / 3.5초마다 성유리 지속 피해",
+          tip: "새 조각 점등 순간 그 위 적은 5 피해(적별 1초 제한)를 받고, 이후 장판 피해는 3.5초 뒤부터 적용. 점등 영역은 이동속도 18% 감소. 완성 뒤 체력 75% 초과는 8칸, 25% 초과는 6칸, 그 이하는 4칸으로 재구성. 완성 시 전체 피해 24·빙결 1.2초와 10초간 피해감소."
         },
         wind_rio: {
           damage: "질풍돌파 10~15 / 풍압충돌 2~5",
