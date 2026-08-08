@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>원형 아레나 v190</title>
+  <title>원형 아레나 v191</title>
   <style>
     :root {
       --bg: #020617;
@@ -868,7 +868,7 @@
 </head>
 <body>
   <header>
-    <h1 id="mainTitle">원형 아레나 v190</h1>
+    <h1 id="mainTitle">원형 아레나 v191</h1>
     <p>자동 전투 시뮬레이터</p>
   </header>
 
@@ -1481,11 +1481,11 @@
       if (f.irisLitCount >= f.irisGlassCells.length) {
         f.irisDamageReductionTimer = Math.max(f.irisDamageReductionTimer || 0, 10.0);
 
-        const burstDamage = 20;
+        const burstDamage = 24;
         enemiesOf(f).forEach(e => {
           if (!e.alive) return;
           damage(e, burstDamage, f, "성유리완성");
-          applyFreeze(e, 0.55);
+          applyFreeze(e, 1.20);
           spawnHitFlash(e.x, e.y, "#fdf4ff", 52);
           spawnFloatingText(e.x, e.y - e.r - 28, `성유리 ${burstDamage}`, "#fdf4ff");
         });
@@ -1584,6 +1584,7 @@
     }
 
     const patchNotes = [
+      "v191: 이리스 성유리 완성 광역 피해 20→24, 완성 빙결 0.55초→1.2초.",
       "v190: 이리스 성유리 완성 후 다음 필드를 체력 비율에 따라 8·6·4칸으로 재구성.",
       "v189: 역할별 체력 통일 리메이크 롤백 — 각 캐릭터를 v186의 개별 체력으로 복구. 상성표·이리스 패치는 유지.",
       "v188: 전체 상성표 30전 추가 — 모든 캐릭터 조합을 중복 없이 30전씩 계산하고 승-무-패 표와 복사용 전적을 생성.",
@@ -1729,9 +1730,9 @@
           tip: "방패 중 반격."
         },
         prism_iris: {
-          damage: "점등영역 3.5초마다 2·이동속도 -18% / 완성 전체피해 20",
+          damage: "점등영역 3.5초마다 2·이동속도 -18% / 완성 전체피해 24·빙결 1.2초",
           tick: "3.5초마다 성유리 지속 피해",
-          tip: "점등 영역에 머무르면 지속 피해와 이동속도 18% 감소. 완성 뒤 체력 75% 초과는 8칸, 25% 초과는 6칸, 그 이하는 4칸으로 재구성. 완성 시 10초간 받는 피해 30% 감소."
+          tip: "점등 영역에 머무르면 지속 피해와 이동속도 18% 감소. 완성 뒤 체력 75% 초과는 8칸, 25% 초과는 6칸, 그 이하는 4칸으로 재구성. 완성 시 전체 피해 24·빙결 1.2초와 10초간 피해감소."
         },
         wind_rio: {
           damage: "질풍돌파 10~15 / 풍압충돌 2~5",
